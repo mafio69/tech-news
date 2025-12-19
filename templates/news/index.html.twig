@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>Tech News LIVE!</title></head>
+<body>
+<h1>📰 News ({{ news|length }})</h1>
+{% for item in news %}
+<div style="border:1px solid #ddd; margin:10px; padding:20px;">
+    <h3>{{ item.title }}</h3>
+    <p><a href="{{ item.url }}" target="_blank">{{ item.url }}</a></p>
+    <small>{{ item.createdAt|date('Y-m-d H:i') }}</small>
+</div>
+{% else %}
+<p>Brak newsów. Dodaj dane testowe!</p>
+{% endfor %}
+</body>
+</html>
