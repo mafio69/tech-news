@@ -1,16 +1,46 @@
-<!DOCTYPE html>
-<html>
-<head><title>Tech News LIVE!</title></head>
-<body>
-<h1>📰 News ({{ news|length }})</h1>
-{% for item in news %}
-<div style="border:1px solid #ddd; margin:10px; padding:20px;">
-    <h3>{{ item.title }}</h3>
-    <p><a href="{{ item.url }}" target="_blank">{{ item.url }}</a></p>
-    <small>{{ item.createdAt|date('Y-m-d H:i') }}</small>
-</div>
-{% else %}
-<p>Brak newsów. Dodaj dane testowe!</p>
-{% endfor %}
-</body>
-</html>
+{% extends 'base.html.twig' %}
+
+{% block title %}Tech News{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <h1>📰 Tech News ({{ news|length }})</h1>
+
+        {% if news|length > 0 %}
+            {% for item in news %}
+                <article class="news-item">
+                    <h2>{{ item.title }}</h2>
+                    <p>
+                        <a href="{{ item.url }}" target="_blank" rel="noopener">
+                            {{ item.url }}
+                        </a>
+                    </p>
+                    <small>{{ item.createdAt|date('Y-m-d H:i') }}</small>
+
+                    {% if item.analysis %}
+                        {% set analysis = item.analysis %}
+
+                        <details>
+                            <summary>🤖 AI Analysis</summary>
+                            <div class="analysis">
+                                <p><strong>Summary (PL):</strong> {{ analysis.summary|default('brak') }}</p>
+                                <p><strong>EN:</strong> {{ analysis.en|default('brak') }}</p>
+                                <p><strong>PL:</strong> {{ analysis.pl|default('brak') }}</p>
+                                <p><strong>ES:</strong> {{ analysis.es|default('brak') }}</p>
+
+                                <p><strong>Raw JSON:</strong></p>
+                                <pre style="background:#f5f5f5;padding:10px;font-size:0.9em;max-height:200px;overflow:auto;">
+{{ analysis|json_encode(constant('JSON_PRETTY_PRINT')) }}
+            </pre>
+                            </div>
+                        </details>
+                    {% else %}
+                        <p><em>⏳ AI analysis pending...</em></p>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        {% else %}
+            <p>Brak newsów w bazie.</p>
+        {% endif %}
+    </div>
+{% endblock %}
