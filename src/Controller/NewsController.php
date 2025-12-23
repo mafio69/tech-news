@@ -1,16 +1,19 @@
 <?php
+
 namespace App\Controller;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+
 use App\Repository\NewsRepository;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Routing\Annotation\Route;
 
 class NewsController extends AbstractController
 {
-    #[Route('/news', name: 'app_news')]
-    public function index(NewsRepository $newsRepository): Response
+    #[Route('/api/news', name: 'api_news', methods: ['GET'])]
+    public function index(NewsRepository $newsRepository): JsonResponse
     {
-        $news = $newsRepository->findAll();
-        return $this->render('news/index.html.twig', ['news' => $news]);
+        $news = $newsRepository->findBy([], ['createdAt' => 'DESC'], 20);
+
+        return $this->json($news);
     }
 }
