@@ -19,12 +19,15 @@ class News
     #[ORM\Column(length: 500)]
     private ?string $url = null;
 
-    #[ORM\Column(type: Types::JSON)]
-    private array $analysis = [];
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $analysis = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
-
+    public function __construct()
+    {
+        $this->createdAt = new \DateTimeImmutable('now');
+    }
     // Gettery i settery
     public function getId(): ?int
     {
@@ -53,21 +56,19 @@ class News
         return $this;
     }
 
-    public function setAnalysis($analysis): self
+    public function setAnalysis(?string $analysis): self
     {
-
-        if (is_array($analysis)) {
-            $this->analysis = $analysis;
-        } else {
-            $this->analysis = json_decode($analysis, true) ?: [];
-        }
+        $this->analysis = $analysis;
         return $this;
     }
 
-    public function getAnalysis(): array
+    public function getAnalysis(): ?string
     {
-        return $this->analysis;
+        return $this->analysis
+            ? json_decode($this->analysis, true) ?: []
+            : [];
     }
+
 
     public function getCreatedAt(): ?\DateTimeImmutable
     {
