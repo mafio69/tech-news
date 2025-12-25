@@ -20,9 +20,9 @@ services:
         resource: '../src/'
     App\Service\NewsScraperService:
         arguments:
-        tags: [ 'controller.service_arguments' ]
-    App\Service\AnalyzeWithPerplexity:
-        arguments:
-            $apiKey: '%env(PERPLEXITY_API_KEY)%'
+            $em: '@doctrine.orm.entity_manager'
+            $httpClient: '@http_client'
+            $logger: '@logger'
+            $analyze: '@App\Service\AnalyzeService'
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

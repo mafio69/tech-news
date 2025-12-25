@@ -4,17 +4,13 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
     plugins: [vue()],
     server: {
-        host: true,  // ← PUBLICZNY HOST
+        port: 5173,
+        allowedHosts: ['.ngrok-free.dev'],   // albo konkretnie: ['misapprehensively-lightish-maia.ngrok-free.dev']
         proxy: {
             '/api': {
-                target: 'http://127.0.0.1:3000',
+                target: 'http://localhost:8000',
                 changeOrigin: true,
-            }
+            },
         },
-        allowedHosts: [  // ← NGROK DOMENY
-            '.ngrok-free.app',
-            '.ngrok.io',
-            'misapprehensively-lightish-maia.ngrok-free.dev'
-        ]
-    }
+    },
 })

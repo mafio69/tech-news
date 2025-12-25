@@ -1,3 +1,4 @@
+
 <template>
     <div class="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8">
         <header class="max-w-4xl mx-auto mb-12">
@@ -8,10 +9,9 @@
                 Świeże tech newsy z automatycznymi tłumaczeniami PL/EN/ES
             </p>
         </header>
-
-        <div v-if="loading" class="flex justify-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
+=======
+<script setup>
+import { ref, onMounted } from 'vue'
 
         <div v-else-if="news.length === 0" class="text-center py-20">
             <p class="text-2xl opacity-60">
@@ -104,82 +104,29 @@
             </button>
         </div>
     </div>
-</template>
-
-<script setup>
-import { ref, onMounted } from 'vue'
-
-const news = ref([])
-const loading = ref(true)
-
-// globalny wybór języka
-const preferredLang = ref('original')
-const LANG_KEY = 'tn_lang'
-
-const detectLanguage = () => {
-    const navLang = navigator.language || (navigator.languages && navigator.languages[0]) || 'en'
-
-    if (navLang.startsWith('pl')) preferredLang.value = 'pl'
-    else if (navLang.startsWith('es')) preferredLang.value = 'es'
-    else if (navLang.startsWith('en')) preferredLang.value = 'en'
-    else preferredLang.value = 'original'
-}
-
-const loadLang = () => {
-    const stored = localStorage.getItem(LANG_KEY)
-    if (stored && ['original', 'en', 'pl', 'es'].includes(stored)) {
-        preferredLang.value = stored
-    } else {
-        detectLanguage()
-    }
-}
-
-const setLang = (lang) => {
-    preferredLang.value = lang
-    localStorage.setItem(LANG_KEY, lang)
-}
-
-const fetchNews = async () => {
-    loading.value = true
-    try {
-        const response = await fetch('/api/news')
-        news.value = await response.json()
-    } catch (error) {
-        console.error('Błąd:', error)
-    } finally {
-        loading.value = false
-    }
-}
-
-// wybór tytułu wg języka
-const currentTitle = (item) => {
-    const a = item.analysis || {}
-    switch (preferredLang.value) {
-        case 'pl':
-            return a.pl || item.title
-        case 'es':
-            return a.es || item.title
-        case 'en':
-            return a.en || item.title
-        case 'original':
-        default:
-            return item.title
-    }
-}
-
-// podsumowanie – traktujemy jako PL, ale pokazujemy też dla EN/ES
-const currentSummary = (item) => {
-    const a = item.analysis || {}
-    if (['pl', 'en', 'es'].includes(preferredLang.value) && a.summary) {
-        return a.summary
-    }
-    return ''
-}
-
-onMounted(() => {
-    loadLang()
-    fetchNews()
+=======
+onMounted(async () => {
+    const res = await fetch('/api/news') // dzięki proxy
+    news.value = await res.json()
 })
-
-const refreshNews = () => fetchNews()
 </script>
+
+<template>
+    <main class="p-4">
+        <div class="mb-4 space-x-2">
+            <button @click="lang = 'summary'">Summary</button>
+            <button @click="lang = 'en'">EN</button>
+            <button @click="lang = 'pl'">PL</button>
+            <button @click="lang = 'es'">ES</button>
+        </div>
+
+        <ul>
+            <li v-for="item in news" :key="item.id" class="mb-3">
+                <h2 class="font-bold">{{ item.title }}</h2>
+                <p>
+                    {{ item.analysis?.[lang] ?? item.title }}
+                </p>
+            </li>
+        </ul>
+    </main>
+
