@@ -62,13 +62,13 @@ class News
         return $this;
     }
 
-    public function getAnalysis(): ?string
+// getter – tablica
+    public function getAnalysis(): array
     {
         return $this->analysis
             ? json_decode($this->analysis, true) ?: []
             : [];
     }
-
 
     public function getCreatedAt(): ?\DateTimeImmutable
     {
