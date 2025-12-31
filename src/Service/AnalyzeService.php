@@ -1,18 +1,21 @@
 <?php
-// src/Service/AnalyzeService.php
+
+declare(strict_types=1);
+
 namespace App\Service;
 
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class AnalyzeService
 {
     public function __construct(
         private HttpClientInterface $httpClient,
         private LoggerInterface $logger
-    ) {}
+    ) {
+    }
 
-    public function analyze(string $title, string $desc = '', string $url = ''): array
+    public function analyze(string $title, string $desc, string $url): array
     {
         $result = $this->tryPerplexity($title, $desc, $url);
 
@@ -29,71 +32,75 @@ class AnalyzeService
         $apiKey = $_ENV['PERPLEXITY_API_KEY'] ?? null;
 
         try {
-            // TU tworzysz obiekt $response
             $response = $this->httpClient->request(
                 'POST',
                 'https://api.perplexity.ai/chat/completions',
                 [
                     'headers' => [
-                        'Authorization' => 'Bearer ' . $apiKey,
-                        'Content-Type'  => 'application/json',
+                        'Authorization' => 'Bearer '.$apiKey,
+                        'Content-Type' => 'application/json',
                     ],
                     'json' => [
-                        'model'    => 'sonar',
+                        'model' => 'sonar',
                         'messages' => [
-                            ['role' => 'system', 'content' => 'Return ONLY valid JSON, no markdown.'],
-                            ['role' => 'user',   'content' => $prompt],
+                            [
+                                'role' => 'system',
+                                'content' => 'Return ONLY valid JSON. No markdown, no explanations. Exact structure: {"summary":"","en":"","pl":"","es":""}',
+                            ],
+                            ['role' => 'user', 'content' => $prompt],
                         ],
-                        'max_tokens' => 120,
+                        'max_tokens' => 500,
                     ],
                     'timeout' => 15.0,
                 ]
             );
 
-            // STĄD korzystasz z tego samego $response
             if ($response->getStatusCode() !== 200) {
                 $this->logger->warning('Perplexity failed', [
-                    'url'    => $url,
+                    'url' => $url,
                     'status' => $response->getStatusCode(),
-                    'body'   => $response->getContent(false),
+                    'body' => $response->getContent(false),
                 ]);
+
                 return null;
             }
 
             $data = json_decode($response->getContent(false), true);
-            $raw  = $data['choices'][0]['message']['content'] ?? '{}';
+            $raw = trim($data['choices'][0]['message']['content'] ?? '{}');
 
-            $raw = trim($raw);
-            $raw = preg_replace('/^``````$/i', '', $raw);
-
+            $raw = preg_replace('/```(?:json)?\s*/i', '', $raw);
             $analysis = json_decode($raw, true);
 
             if (!is_array($analysis) || !$this->isValidJson($analysis)) {
                 $this->logger->warning('Perplexity returned invalid JSON', [
-                    'url'    => $url,
-                    'raw'    => $raw,
-                    'parsed' => $analysis,
+                    'url' => $url,
+                    'raw' => substr($raw, 0, 200),
                 ]);
+
                 return null;
             }
 
             return $analysis;
+
         } catch (\Throwable $e) {
             $this->logger->error('Perplexity error', [
-                'url'   => $url,
+                'url' => $url,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
 
     private function fallback(string $title): array
     {
+        $short = substr($title, 0, 100);
+
         return [
-            'summary' => substr($title, 0, 80),
-            'en'      => $title,
-            'pl'      => 'PL: ' . substr($title, 0, 50),
-            'es'      => 'ES: ' . substr($title, 0, 50),
+            'summary' => $short.'...',
+            'en' => $short.'...',
+            'pl' => 'PL: '.$short.'...',
+            'es' => 'ES: '.$short.'...',
         ];
     }
 
@@ -103,73 +110,22 @@ class AnalyzeService
     }
 
     private function buildPrompt(string $title, string $desc): string
-      {
-        return
-            "You are a news assistant. ".
-            "Summarize and translate the following tech news title and description.\n\n".
-            "Title: \"$title\"\n".
-            "Description: \"$desc\"\n\n".
-            "Return ONLY valid JSON, with NO explanation, NO markdown.\n".
-            "The JSON MUST have exactly these keys:\n".
-            "{\n".
-            "  \"summary\": \"Short summary in English (max 80 chars)\",\n".
-            "  \"en\": \"English headline\",\n".
-            "  \"pl\": \"Polish translation of the headline\",\n".
-            "  \"es\": \"Spanish translation of the headline\"\n".
-            "}";
-
-    }
-
-    private function callApi(string $prompt, string $url): ?array
     {
-        $apiKey = $_ENV['PERPLEXITY_API_KEY'] ?? null;
+        return <<<PROMPT
+Analyze tech news. Return ONLY valid JSON, no markdown:
 
-        try {
-            $response = $this->httpClient->request(
-                'POST',
-                'https://api.perplexity.ai/chat/completions',
-                [
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $apiKey,
-                        'Content-Type'  => 'application/json',
-                    ],
-                    'json' => [
-                        'model'    => 'sonar',
-                        'messages' => [
-                            ['role' => 'system', 'content' => 'Return ONLY valid JSON.'],
-                            ['role' => 'user',   'content' => $prompt],
-                        ],
-                        'max_tokens' => 100,
-                    ],
-                    'timeout' => 15.0,
-                ]
-            );
+{
+  "summary": "1-2 sentence summary in original language (max 110 chars)",
+  "en": "English summary/translation (max 110 chars)",
+  "pl": "Polish summary/translation (max 110 chars)",
+  "es": "Spanish summary/translation (max 110 chars)"
+}
 
-            if ($response->getStatusCode() !== 200) {
-                $this->logger->warning('Perplexity failed', [
-                    'url'    => $url,
-                    'status' => $response->getStatusCode(),
-                    'body'   => $response->getContent(false),
-                ]);
-                return null;
-            }
+TITLE: {$title}
+DESCRIPTION: {$desc}
 
-            $data = json_decode($response->getContent(false), true);
-            $raw  = $data['choices'][0]['message']['content'] ?? '{}';
-            $analysis = json_decode($raw, true) ?: null;
-
-            if (!is_array($analysis)) {
-                return null;
-            }
-
-            return $analysis;
-        } catch (\Throwable $e) {
-            $this->logger->error('Perplexity error', [
-                'url'   => $url,
-                'error' => $e->getMessage(),
-            ]);
-            return null;
-        }
+JSON ONLY:
+PROMPT;
     }
 
     private function isValidJson(array $json): bool
